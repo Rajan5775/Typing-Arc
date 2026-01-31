@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing ARC v2.0</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <style>
+        /* --- ARC THEME (Institutional Finance) --- */
+        :root {
+            --arc-blue: #003366;
+            --arc-light: #F4F6F8;
+            --arc-accent: #00C853; /* Profit Green */
+            /* NEW: Brighter neon for the matrix */
+            --arc-neon: #39FF14; 
+            --arc-text: #1A202C;
+            --arc-border: #E2E8F0;
+        }
+
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background-color: var(--arc-light);
+            color: var(--arc-text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        /* --- MATRIX BACKGROUND --- */
+        #matrix-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            /* Increased opacity for brighter effect */
+            opacity: 0.4; 
+        }
+
+        /* HEADER */
+        header {
+            width: 100%;
+            background: rgb(239, 240, 240);
+            border-bottom: 1px solid var(--arc-border);
+            padding: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+
+        .header-inner {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--arc-blue);
+            letter-spacing: -1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 10px; height: 10px;
+            background: var(--arc-accent);
+            border-radius: 50%;
+            animation: blink 2s infinite;
+        }
+
+        @keyframes blink { 0% {opacity:1} 50% {opacity:0.5} 100% {opacity:1} }
+
+        .wallet-btn {
+            background: var(--arc-blue);
+            color: rgb(255, 255, 255);
+            border: none;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        /* DASHBOARD */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-top: 40px;
+            width: 100%;
+            max-width: 800px;
+            z-index: 1;
+        }
+
+        .card {
+            background: rgb(244, 248, 247);
+            padding: 20px;
+            border: 1px solid var(--arc-border);
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .card-label { font-size: 0.8rem; color: #718096; text-transform: uppercase; letter-spacing: 1px; }
+        .card-value { font-size: 2rem; font-weight: 700; color: var(--arc-blue); margin-top: 5px; }
+        
+        /* TIME SELECTOR */
+        .time-select {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--arc-accent);
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            outline: none;
+            font-family: 'Roboto Mono', monospace;
+            text-align: center;
+            -webkit-appearance: none; 
+            -moz-appearance: none;
+            appearance: none;
+        }
+        .time-select:hover { text-decoration: underline; }
+        .time-wrapper { position: relative; display: inline-block; }
+        .time-wrapper::after {
+            content: '▼';
+            font-size: 0.8rem;
+            color: var(--arc-accent);
+            position: absolute;
+            right: -15px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        /* TYPING AREA */
+        .terminal-window {
+            margin-top: 30px;
+            background: #1A202C;
+            color: var(--arc-accent);
+            padding: 40px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 720px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 1;
+            border: 1px solid var(--arc-accent);
+        }
+
+        .word-display { font-size: 3.5rem; margin-bottom: 20px; font-weight: bold; text-shadow: 0 0 10px var(--arc-accent); }
+        
+        .input-line {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--arc-accent);
+            color: rgb(40, 22, 22);
+            font-size: 2rem;
+            text-align: center;
+            width: 100%;
+            outline: none;
+            font-family: 'Roboto Mono', monospace;
+        }
+        .input-line::placeholder { color: rgba(0, 200, 83, 0.5); }
+
+        /* HISTORY TABLE */
+        .table-container {
+            margin-top: 40px;
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            border: 1px solid var(--arc-border);
+            border-radius: 8px;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .table-header {
+            background: #F7FAFC;
+            padding: 15px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--arc-blue);
+            border-bottom: 1px solid var(--arc-border);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .log-item {
+            padding: 15px;
+            border-bottom: 1px solid var(--arc-border);
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: none; align-items: center; justify-content: center;
+            z-index: 100;
+        }
+        .modal {
+            background: white; padding: 40px; border-radius: 8px; text-align: center; width: 400px;
+            border-top: 4px solid var(--arc-accent);
+        }
+        .submit-btn {
+            background: var(--arc-blue); color: white; padding: 15px 30px;
+            border: none; border-radius: 4px; font-size: 1.2rem; cursor: pointer; margin-top: 20px; width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="matrix-canvas"></canvas>
+
+    <header>
+        <div class="header-inner">
+            <div class="brand">
+                <div class="status-dot"></div>
+                ARC TERMINAL v2.0
+            </div>
+            <button id="connectWallet" class="wallet-btn">CONNECT WALLET (USDC)</button>
+        </div>
+    </header>
+
+    <div class="dashboard">
+        <div class="card">
+            <div class="card-label">Volume (Score)</div>
+            <div class="card-value" id="score">0</div>
+        </div>
+        <div class="card">
+            <div class="card-label">Streak Multiplier</div>
+            <div class="card-value" id="multiplier">1x</div>
+        </div>
+        <div class="card">
+            <div class="card-label">Session Time</div>
+            <div class="time-wrapper">
+                <select id="time-select" class="time-select" onchange="setTime(this.value)">
+                    <option value="15">15s</option>
+                    <option value="30">30s</option>
+                    <option value="60" selected>60s</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="terminal-window">
+        <div class="word-display" id="word-display">INITIALIZE</div>
+        <input type="text" id="word-input" class="input-line" autocomplete="off" placeholder="> Awaiting Command...">
+    </div>
+
+    <div class="table-container">
+        <div class="table-header">
+            <span>TRANSACTION HISTORY</span>
+            <span>STATUS: LIVE</span>
+        </div>
+        <div id="history-list">
+            <div style="padding:20px; text-align:center; color:#718096">Connect wallet to view ledger.</div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <h2 style="color:var(--arc-blue)">SESSION CLOSED</h2>
+            <p style="color:#718096">Final Efficiency Rating</p>
+            <h1 id="final-score" style="font-size:3rem; margin:10px 0; color:var(--arc-accent)">0</h1>
+            <button class="submit-btn" onclick="saveScore()">SUBMIT TO LEDGER</button>
+            <button onclick="resetGame()" style="background:transparent; border:none; margin-top:10px; cursor:pointer; color:#718096">Dismiss</button>
+        </div>
+    </div>
+
+    <script>
+        // --- ARC CONFIGURATION ---
+        const CONTRACT_ADDRESS = "REPLACE_WITH_YOUR_ARC_CONTRACT_ADDRESS"; 
+        const CHAIN_ID = 5042002; 
+        const CHAIN_HEX = "0x4cefa2"; 
+        const RPC_URL = "https://rpc.testnet.arc.network";
+
+        // Financial Dictionary
+        const words = [
+            "asset", "equity", "yield", "ledger", "audit", "credit", "debit",
+            "margin", "liquid", "token", "value", "scale", "growth", "index",
+            "stock", "bond", "trade", "swap", "hedge", "alpha", "beta", "risk",
+            "smart", "chain", "block", "hash", "node", "valid", "proxy"
+        ];
+
+        let currentWord = "";
+        let score = 0;
+        let streak = 0;
+        let multiplier = 1;
+        let selectedTime = 60;
+        let timeLeft = 60;
+        let isPlaying = false;
+        let timerInterval;
+
+        let provider, signer, contract, userAddress;
+        const CONTRACT_ABI = [
+            "function saveScore(uint256 _wpm) public",
+            "function getHistory(address _user) public view returns (tuple(uint256 timestamp, uint256 wpm)[])"
+        ];
+
+        // --- UPDATED: BRIGHTER MATRIX ANIMATION ---
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const characters = '01';
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        const drops = [];
+        for (let i = 0; i < columns; i++) { drops[i] = 1; }
+
+        function drawMatrix() {
+            // Lighter fade for a brighter overall look
+            ctx.fillStyle = 'rgba(244, 246, 248, 0.15)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // --- NEW: Super Bright Neon Green ---
+            ctx.fillStyle = '#39FF14'; 
+            ctx.font = fontSize + 'px Roboto Mono';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = characters.charAt(Math.floor(Math.random() * characters.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 50);
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+        // ------------------------------------------
+
+        function init() {
+            showWord();
+            document.getElementById('word-input').addEventListener('input', handleInput);
+        }
+
+        function showWord() {
+            currentWord = words[Math.floor(Math.random() * words.length)];
+            document.getElementById('word-display').innerText = currentWord.toUpperCase();
+        }
+
+        function handleInput(e) {
+            if(!isPlaying && e.target.value.length > 0) startGame();
+
+            const input = e.target.value.trim().toUpperCase();
+            
+            if (input === currentWord.toUpperCase()) {
+                streak++;
+                updateMultiplier();
+                score += (1 * multiplier);
+                
+                document.getElementById('score').innerText = score;
+                e.target.value = "";
+                
+                const wd = document.getElementById('word-display');
+                wd.style.color = 'white';
+                setTimeout(() => wd.style.color = 'var(--arc-accent)', 100);
+                
+                showWord();
+            } 
+        }
+
+        function updateMultiplier() {
+            if (streak > 5) multiplier = 2;
+            if (streak > 10) multiplier = 3;
+            if (streak > 20) multiplier = 5;
+            document.getElementById('multiplier').innerText = multiplier + "x";
+        }
+
+        function setTime(val) {
+            selectedTime = parseInt(val);
+            if(!isPlaying) {
+                timeLeft = selectedTime;
+            }
+        }
+
+        function startGame() {
+            isPlaying = true;
+            score = 0; streak = 0; multiplier = 1;
+            timeLeft = selectedTime;
+            
+            document.getElementById('time-select').disabled = true;
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                if(timeLeft <= 0) gameOver();
+            }, 1000);
+        }
+
+        function gameOver() {
+            clearInterval(timerInterval);
+            isPlaying = false;
+            document.getElementById('modal').style.display = 'flex';
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('time-select').disabled = false;
+        }
+
+        function resetGame() {
+            document.getElementById('modal').style.display = 'none';
+            timeLeft = selectedTime;
+            document.getElementById('score').innerText = "0";
+            document.getElementById('multiplier').innerText = "1x";
+            document.getElementById('word-input').value = "";
+            showWord();
+        }
+
+        document.getElementById('connectWallet').addEventListener('click', async () => {
+            if(!window.ethereum) return alert("Install MetaMask!");
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            await provider.send("eth_requestAccounts", []);
+            signer = provider.getSigner();
+            userAddress = await signer.getAddress();
+
+            const network = await provider.getNetwork();
+            if(network.chainId !== CHAIN_ID) {
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: CHAIN_HEX }],
+                    });
+                } catch (e) {
+                    if(e.code === 4902) {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: CHAIN_HEX,
+                                chainName: 'Arc Testnet',
+                                rpcUrls: [RPC_URL],
+                                nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+                                blockExplorerUrls: ['https://testnet.arcscan.app']
+                            }]
+                        });
+                    }
+                }
+            }
+
+            contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+            document.getElementById('connectWallet').innerText = "CONNECTED: " + userAddress.slice(0,6) + "...";
+            loadHistory();
+        });
+
+        async function saveScore() {
+            if(!contract) return alert("Connect Wallet first!");
+            const btn = document.querySelector('.submit-btn');
+            try {
+                btn.innerText = "PROCESSING (USDC)...";
+                const tx = await contract.saveScore(score);
+                btn.innerText = "CONFIRMING...";
+                await tx.wait();
+                alert("Transaction Confirmed on Arc!");
+                loadHistory();
+                resetGame();
+            } catch(e) {
+                console.error(e);
+                alert("Failed. Ensure you have Testnet USDC for gas.");
+                btn.innerText = "RETRY";
+            }
+        }
+
+        async function loadHistory() {
+            if(!contract) return;
+            const h = await contract.getHistory(userAddress);
+            const list = document.getElementById('history-list');
+            list.innerHTML = "";
+            [...h].reverse().forEach(item => {
+                const row = document.createElement('div');
+                row.className = "log-item";
+                row.innerHTML = `
+                    <span style="font-family:'Roboto Mono'">${new Date(item.timestamp*1000).toLocaleTimeString()}</span>
+                    <span style="font-weight:bold; color:var(--arc-blue)">${item.wpm} PTS</span>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>

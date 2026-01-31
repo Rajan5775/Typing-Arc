@@ -242,16 +242,31 @@
             <div class="card-label">Streak Multiplier</div>
             <div class="card-value" id="multiplier">1x</div>
         </div>
-        <div class="card">
-            <div class="card-label">Session Time</div>
-            <div class="time-wrapper">
-                <select id="time-select" class="time-select" onchange="setTime(this.value)">
-                    <option value="15">15s</option>
-                    <option value="30">30s</option>
-                    <option value="60" selected>60s</option>
-                </select>
-            </div>
-        </div>
+       <div class="card">
+    <div class="card-label">Session Time</div>
+    
+    <div id="time-menu" class="time-wrapper">
+        <select id="time-select" class="time-select" onchange="setTime(this.value)">
+            <option value="15">15s</option>
+            <option value="30">30s</option>
+            <option value="60" selected>60s</option>
+        </select>
+    </div>
+
+    <div id="timer-display" class="card-value" style="display:none; color:var(--arc-neon);">60s</div>
+</div><div class="card">
+    <div class="card-label">Session Time</div>
+    
+    <div id="time-menu" class="time-wrapper">
+        <select id="time-select" class="time-select" onchange="setTime(this.value)">
+            <option value="15">15s</option>
+            <option value="30">30s</option>
+            <option value="60" selected>60s</option>
+        </select>
+    </div>
+
+    <div id="timer-display" class="card-value" style="display:none; color:var(--arc-neon);">60s</div>
+</div>
     </div>
 
     <div class="terminal-window">
@@ -387,11 +402,13 @@
             document.getElementById('multiplier').innerText = multiplier + "x";
         }
 
+     // --- FIXED CLOCK LOGIC ---
+
         function setTime(val) {
             selectedTime = parseInt(val);
-            if(!isPlaying) {
-                timeLeft = selectedTime;
-            }
+            timeLeft = selectedTime;
+            // Update the hidden clock text so it's ready when we start
+            document.getElementById('timer-display').innerText = timeLeft + "s";
         }
 
         function startGame() {
@@ -399,20 +416,42 @@
             score = 0; streak = 0; multiplier = 1;
             timeLeft = selectedTime;
             
-            document.getElementById('time-select').disabled = true;
+            // UI: Hide Menu, Show Clock
+            document.getElementById('time-menu').style.display = 'none';
+            document.getElementById('timer-display').style.display = 'block';
+            document.getElementById('timer-display').innerText = timeLeft + "s";
             
             timerInterval = setInterval(() => {
                 timeLeft--;
+                // REAL-TIME UPDATE
+                document.getElementById('timer-display').innerText = timeLeft + "s";
+                
                 if(timeLeft <= 0) gameOver();
             }, 1000);
         }
 
+        
         function gameOver() {
             clearInterval(timerInterval);
             isPlaying = false;
             document.getElementById('modal').style.display = 'flex';
             document.getElementById('final-score').innerText = score;
             document.getElementById('time-select').disabled = false;
+        }
+
+        function resetGame() {
+            document.getElementById('modal').style.display = 'none';
+            
+            // UI: Show Menu, Hide Clock
+            document.getElementById('timer-display').style.display = 'none';
+            document.getElementById('time-menu').style.display = 'block';
+            
+            // Reset Values
+            timeLeft = selectedTime;
+            document.getElementById('score').innerText = "0";
+            document.getElementById('multiplier').innerText = "1x";
+            document.getElementById('word-input').value = "";
+            showWord();
         }
 
         function resetGame() {
